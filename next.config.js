@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  swcMinify: true,
-}
+  source:'http://localhost:8080',
+  destination: 'http://localhost:8080',
+    reactStrictMode: true,
+    swcMinify: true,
+    
+};
 
-module.exports = nextConfig
+module.exports = nextConfig;
