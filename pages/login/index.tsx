@@ -1,51 +1,87 @@
 import { useRouter } from 'next/router';
-import React, { FormEvent, useContext, useRef } from 'react';
+import React, { FormEvent, useContext, useEffect, useRef } from 'react';
 import { UserContext } from '../../context/AuthContext';
 import { UserContextType } from '../../types/userTypes';
-import { getCookie, setCookie } from 'cookies-next';
+import * as Bowser from 'bowser';
+import { GetServerSideProps, NextPage } from 'next';
+import io from 'socket.io-client';
+let socket;
 
-export default function Login() {
+interface Props {
+    ip: string;
+}
+
+const Login: NextPage<Props> = ({ ip }) => {
+    const router = useRouter();
     const userContext = useContext<UserContextType | null>(UserContext);
 
-    const router = useRouter();
-
+    // Refs inputs for sing in function
     const email = useRef<HTMLInputElement>(null);
     const password = useRef<HTMLInputElement>(null);
+    // Current browser provider
+    let provider: string | undefined;
+    useEffect(() => {
+        // populate provider variable is made inside a useEffect to make window object available
+        let browserObj = Bowser.getParser(window.navigator.userAgent).getBrowser();
+        // console.log(browserObj);
+        if (browserObj) {
+            provider = browserObj.name;
+        }
+    }, []);
 
+    // Triggers when form is submitted
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+        // Prevent browser default behavior
         e?.preventDefault();
         const body = {
             email: email.current!.value,
             password: password.current!.value,
+            ip,
+            provider: provider,
         };
+        // Signs in user if credentials are ok or stay in the page to try again
         signin(body);
     };
 
-    const signin = async (body: { email: string; password: string }) => {
+    const signin = async (body: { email: string; password: string; provider?: string }) => {
         try {
+            // log in user and stores it in cookie as session with a new currentSession in session.current.currentSession
             const data = await fetch(`${process.env.NEXT_PUBLIC_BFF_URL}/auth/signin`, {
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                method: 'POST',
+                method: 'PUT',
                 body: JSON.stringify(body),
                 credentials: 'include' as RequestCredentials,
             });
-
-            const newUser = await data.json();
-
-            if (newUser.statusCode !== 400) {
+            
+            if (data.status === 200) {
+                // converts response to json
+                const newUser = await data.json();
+                await usingSocket(newUser._id);
                 userContext?.updateUser(newUser);
-
-                alert('Logged in');
-                router.push('/');
+                setTimeout(() => {
+                    alert('Logged in');
+                    router.push('/');
+                }, 1000);
             } else {
+                // For any error stay in the page and show an alert
                 alert('something went wrong try again.');
             }
         } catch (error) {
             alert('wrong email or password');
             throw error;
         }
+    };
+    const usingSocket = async (id) => {
+        await fetch('/api/socket');
+        socket = io();
+
+        socket.on('connect', () => {
+            console.log('connected');
+        });
+
+        socket.emit('logout-user',id);
     };
 
     return (
@@ -60,4 +96,29 @@ export default function Login() {
             </form>
         </section>
     );
-}
+};
+
+// Get ip address from the request and makes it available on props
+export const getServerSideProps: GetServerSideProps = async (context) => {
+    let ip;
+    const { req } = context;
+    // ip is coming into the headers?
+    if (req.headers['x-forwarded-for']) {
+        // .split conflicts with (string | string[])
+        // @ts-ignore
+        ip = req.headers['x-forwarded-for'].split(',')[0];
+    } else if (req.headers['x-real-ip']) {
+        ip = req.socket.remoteAddress;
+    } else {
+        // is not in the headers --> take it from the req obj
+        ip = req.socket.remoteAddress;
+    }
+
+    return {
+        props: {
+            ip,
+        },
+    };
+};
+
+export default Login;
