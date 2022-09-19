@@ -4,7 +4,8 @@ import { useContext, useEffect, useState } from 'react';
 import { UserContext } from '../context/AuthContext';
 import { useRouter } from 'next/router';
 import io from 'socket.io-client';
-let socket;
+let socket: any;
+let shouldListen = false;
 
 const Home: NextPage = () => {
     // console.log(ip);
@@ -16,56 +17,14 @@ const Home: NextPage = () => {
     }, []);
 
     useEffect(() => {
-        if(user){
+        if (user._id && shouldListen) {
             socketInitializer();
         }
-        return (()=>{
+
+        return () => {
             socket = null;
-        })
-    }, [router]);
-
-    const socketInitializer = async () => {
-        await fetch('/api/socket');
-        socket = io();
-
-        socket.on('connect', () => {
-            console.log('connected');
-        });        
-
-        console.log(user?.name);
-        
-        if (user?._id) {
-            socket.on(`${user._id}-logout`, (id) => {
-                if (id === user._id) {
-                    console.log('on id-logout');
-                    
-                    socket = null;
-                    return logout();
-                }
-            });
-        }
-    };
-
-    const logout = async () => {        
-        try {
-            const res = await fetch(`${process.env.NEXT_PUBLIC_BFF_URL}/auth/signout`, {
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                method: 'POST',
-                credentials: 'include' as RequestCredentials,
-            });
-
-            if (res.status === 201) {
-                updateUser(null);
-                alert('Logged out.');
-                socket = null
-                router.push('/login');
-            }
-        } catch (error) {
-            throw error;
-        }
-    };
+        };
+    }, [shouldListen]);
 
     const fetchUser = async () => {
         try {
@@ -81,13 +40,60 @@ const Home: NextPage = () => {
                 // Cant get user? send back to '/login'
                 const data = await res.json();
                 // set User into UserContext
+                shouldListen = true;
                 updateUser({ ...data });
             } else {
-                router.push('/login');
+                router.replace('/login').then(()=>{
+                    router.reload()
+                });
             }
         } catch (error) {
             // any error sends user back to '/login'
-            router.push('/login');
+            router.replace('/login').then(()=>{
+                router.reload()
+            });
+            throw error;
+        }
+    };
+
+    const socketInitializer = async () => {
+        await fetch('/api/socket');
+        socket = io();
+
+        socket.on('connect', () => {
+            console.log('connected');
+        });
+
+        console.log(shouldListen);
+
+        socket.on(`${user._id}-logout`, (id: string) => {
+            if (id === user._id) {
+                console.log('on id-logout');
+
+                logout();
+            }
+        });
+    };
+
+    const logout = async () => {
+        try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BFF_URL}/auth/signout`, {
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                method: 'POST',
+                credentials: 'include' as RequestCredentials,
+            });
+
+            if (res.status === 201) {
+                updateUser(null);
+                shouldListen = false;
+                alert('Logged out.');
+                router.replace('/login').then(()=>{
+                    router.reload()
+                });
+            }
+        } catch (error) {
             throw error;
         }
     };

@@ -5,7 +5,7 @@ import { UserContextType } from '../../types/userTypes';
 import * as Bowser from 'bowser';
 import { GetServerSideProps, NextPage } from 'next';
 import io from 'socket.io-client';
-let socket;
+let socket = null;
 
 interface Props {
     ip: string;
@@ -60,10 +60,12 @@ const Login: NextPage<Props> = ({ ip }) => {
                 const newUser = await data.json();
                 userContext?.updateUser(newUser);
 
-                await usingSocket(newUser._id);
+                usingSocket(newUser._id);
 
                 alert('Logged in');
-                router.push('/');
+                router.replace('/').then(() => {
+                    router.reload();
+                });
             } else {
                 // For any error stay in the page and show an alert
                 alert('something went wrong try again.');
@@ -82,6 +84,7 @@ const Login: NextPage<Props> = ({ ip }) => {
         });
 
         socket.emit('logout-user', id);
+        socket.off();
     };
 
     return (
