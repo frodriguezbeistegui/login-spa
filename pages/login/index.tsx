@@ -7,7 +7,6 @@ import { GetServerSideProps, NextPage } from 'next';
 import io from 'socket.io-client';
 let socket = null;
 
-
 // gets ip address getServerSideProps() function --> bottom of the file
 interface Props {
     ip: string;
@@ -67,9 +66,7 @@ const Login: NextPage<Props> = ({ ip }) => {
 
                 alert('Logged in');
                 // momentary fix, by  reloading the page component unmounts and does't trigger logout function
-                router.replace('/').then(() => {
-                    router.reload();
-                });
+                router.push('/');
             } else {
                 // For any error stay in the page and show an alert
                 alert('something went wrong try again.');
@@ -88,11 +85,8 @@ const Login: NextPage<Props> = ({ ip }) => {
             console.log('connected');
         });
 
-        // emits action to logout all user 
-        socket.emit('logout-user', id);
-
-        // unmounts the socket
-        socket.off();
+        // emits action to logout all other sessions of the current user
+        socket.emit('login-user', id);
     };
 
     return (

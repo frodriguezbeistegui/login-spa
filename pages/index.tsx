@@ -20,10 +20,6 @@ const Home: NextPage = () => {
         if (user._id && shouldListen) {
             socketInitializer();
         }
-
-        return () => {
-            socket = null;
-        };
     }, [shouldListen]);
 
     const fetchUser = async () => {
@@ -43,15 +39,11 @@ const Home: NextPage = () => {
                 shouldListen = true;
                 updateUser({ ...data });
             } else {
-                router.replace('/login').then(()=>{
-                    router.reload()
-                });
+                router.push('/login');
             }
         } catch (error) {
             // any error sends user back to '/login'
-            router.replace('/login').then(()=>{
-                router.reload()
-            });
+            router.push('/login');
             throw error;
         }
     };
@@ -61,15 +53,15 @@ const Home: NextPage = () => {
         socket = io();
 
         socket.on('connect', () => {
-            console.log('connected');
+            console.log(`connected with id: ${socket.id}`);
         });
+
+        socket.emit('join-room', user._id);
 
         console.log(shouldListen);
 
-        socket.on(`${user._id}-logout`, (id: string) => {
+        socket.on(`logout-user`, (id: string) => {
             if (id === user._id) {
-                console.log('on id-logout');
-
                 logout();
             }
         });
@@ -89,13 +81,12 @@ const Home: NextPage = () => {
                 updateUser(null);
                 shouldListen = false;
                 alert('Logged out.');
-                router.replace('/login').then(()=>{
-                    router.reload()
-                });
+                router.push('/login');
             }
         } catch (error) {
             throw error;
         }
+        socket.disconnect();
     };
 
     // console.log(user);

@@ -1,5 +1,3 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
-
 import { Server } from 'socket.io';
 // import type { NextApiRequest, NextApiResponse } from 'next';
 
@@ -16,11 +14,18 @@ const SocketHandler = (req: any, res: any) => {
         // gets all emitted actions
         io.on('connection', (socket) => {
             // when user signs in emits this action to logout all other sessions for the same user
-            socket.on('logout-user', (id) => {
+            socket.on('login-user', (id) => {
                 console.log(id, 'from api/socket.ts line 19');
-
+                if (id === '') {
+                    socket.broadcast.volatile.emit(`${id}-logout`, id);
+                }
                 // emits the id of the current user to make it only accessible by the current user
-                socket.broadcast.emit(`${id}-logout`, id);
+                socket.to(id).volatile.emit(`logout-user`, id);
+            });
+
+            // Adds the session to a room with user's id
+            socket.on('join-room', (room) => {
+                socket.join(room);
             });
         });
     }
