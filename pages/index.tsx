@@ -11,11 +11,18 @@ const Home: NextPage = () => {
 
     const router = useRouter();
     const { updateUser, user }: any = useContext(UserContext);
-
     useEffect(() => {
         fetchUser();
-        socketInitializer();
     }, []);
+
+    useEffect(() => {
+        if(user){
+            socketInitializer();
+        }
+        return (()=>{
+            socket = null;
+        })
+    }, [router]);
 
     const socketInitializer = async () => {
         await fetch('/api/socket');
@@ -23,18 +30,23 @@ const Home: NextPage = () => {
 
         socket.on('connect', () => {
             console.log('connected');
-        });
+        });        
 
-        if (user?.name) {
-            socket.on('logout', (id) => {
-                if (id === user.id) {
+        console.log(user?.name);
+        
+        if (user?._id) {
+            socket.on(`${user._id}-logout`, (id) => {
+                if (id === user._id) {
+                    console.log('on id-logout');
+                    
+                    socket = null;
                     return logout();
                 }
             });
         }
     };
 
-    const logout = async () => {
+    const logout = async () => {        
         try {
             const res = await fetch(`${process.env.NEXT_PUBLIC_BFF_URL}/auth/signout`, {
                 headers: {
@@ -45,7 +57,9 @@ const Home: NextPage = () => {
             });
 
             if (res.status === 201) {
+                updateUser(null);
                 alert('Logged out.');
+                socket = null
                 router.push('/login');
             }
         } catch (error) {

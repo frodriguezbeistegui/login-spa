@@ -12,14 +12,12 @@ const SocketHandler = (req: any, res: any) => {
         res.socket.server.io = io;
 
         io.on('connection', (socket) => {
-            socket.on('input-change', (msg) => {
-                socket.broadcast.emit('update-input', msg);
-            });
-            socket.on('logout-user', () =>{
-                socket.emit('logout')
-            })
-        });
+            socket.on('logout-user', (id) => {
+                console.log(id, 'from api/socket.ts line 19');
 
+                socket.broadcast.emit(`${id}-logout`, id);
+            });
+        });
     }
     res.end();
 };

@@ -54,16 +54,16 @@ const Login: NextPage<Props> = ({ ip }) => {
                 body: JSON.stringify(body),
                 credentials: 'include' as RequestCredentials,
             });
-            
+
             if (data.status === 200) {
                 // converts response to json
                 const newUser = await data.json();
-                await usingSocket(newUser._id);
                 userContext?.updateUser(newUser);
-                setTimeout(() => {
-                    alert('Logged in');
-                    router.push('/');
-                }, 1000);
+
+                await usingSocket(newUser._id);
+
+                alert('Logged in');
+                router.push('/');
             } else {
                 // For any error stay in the page and show an alert
                 alert('something went wrong try again.');
@@ -73,7 +73,7 @@ const Login: NextPage<Props> = ({ ip }) => {
             throw error;
         }
     };
-    const usingSocket = async (id) => {
+    const usingSocket = async (id: any) => {
         await fetch('/api/socket');
         socket = io();
 
@@ -81,7 +81,7 @@ const Login: NextPage<Props> = ({ ip }) => {
             console.log('connected');
         });
 
-        socket.emit('logout-user',id);
+        socket.emit('logout-user', id);
     };
 
     return (
@@ -89,9 +89,19 @@ const Login: NextPage<Props> = ({ ip }) => {
             <h1>Log in with your credentials</h1>
             <form onSubmit={(e) => handleSubmit(e)}>
                 <p>Email:</p>
-                <input type="text" ref={email} placeholder="Enter your email" />
+                <input
+                    type="text"
+                    ref={email}
+                    placeholder="Enter your email"
+                    defaultValue={'facu@test.com'}
+                />
                 <p>Password:</p>
-                <input type="text" ref={password} placeholder="Enter your password" />
+                <input
+                    type="text"
+                    ref={password}
+                    placeholder="Enter your password"
+                    defaultValue={'test1234'}
+                />
                 <button type="submit">Log in</button>
             </form>
         </section>
